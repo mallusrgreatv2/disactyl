@@ -1,3 +1,8 @@
+// Don't edit this file! This is the DEFAULT config.
+// A new file src/config.ts will be created when you run the script for the first time.
+// In case something goes wrong with your config, you can copy paste from here.
+// Editing this config has no effect.
+
 export const config = {
   /** The Discord bot's token */
   token: "",
