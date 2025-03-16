@@ -41,32 +41,31 @@ export class StopCommand extends Command {
     await interaction.deferReply();
     const data = await api.getUsage(server);
     if (data === 404) return interaction.editReply("Couldn't find the server!");
+    const embed = new EmbedBuilder().setDescription(
+      data.is_suspended
+        ? "**Suspended**"
+        : `
+      Status: ${data.current_state
+        .split(" ")
+        .map((word) =>
+          [...word]
+            .map((x, i) => (i === 0 ? x.toUpperCase() : x.toLowerCase()))
+            .join("")
+        )
+        .join(" ")}`
+    );
+    if (!data.is_suspended)
+      embed.addFields({
+        name: "Resources",
+        value: stripIndent`
+  RAM: ${formatBytes(data.resources.memory_bytes)}
+  CPU: ${data.resources.cpu_absolute}%
+  Disk: ${formatBytes(data.resources.disk_bytes)}
+  Network (Inbound): ${formatBytes(data.resources.network_rx_bytes)}
+  Network (Outbound): ${formatBytes(data.resources.network_tx_bytes)}`,
+      });
     return interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setDescription(
-            data.is_suspended
-              ? "**Suspended**"
-              : `
-            Status: ${data.current_state
-              .split(" ")
-              .map((word) =>
-                [...word]
-                  .map((x, i) => (i === 0 ? x.toUpperCase() : x.toLowerCase()))
-                  .join("")
-              )
-              .join(" ")}`
-          )
-          .addFields({
-            name: "Resources",
-            value: stripIndent`
-          RAM: ${formatBytes(data.resources.memory_bytes)}
-          CPU: ${data.resources.cpu_absolute}%
-          Disk: ${formatBytes(data.resources.disk_bytes)}
-          Network (Inbound): ${formatBytes(data.resources.network_rx_bytes)}
-          Network (Outbound): ${formatBytes(data.resources.network_tx_bytes)}`,
-          }),
-      ],
+      embeds: [embed],
     });
   }
 }
