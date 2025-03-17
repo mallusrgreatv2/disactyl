@@ -1,9 +1,9 @@
 import { ApplyOptions } from "@sapphire/decorators";
 import { ApplicationCommandRegistry, Command } from "@sapphire/framework";
 import { config } from "../config.js";
-import { ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { api } from "../index.js";
-import { checkPermission } from "../lib/utils.js";
+import { checkPermission, createEmbed } from "../lib/utils.js";
 import { stripIndent } from "common-tags";
 
 @ApplyOptions<Command.Options>({
@@ -11,7 +11,7 @@ import { stripIndent } from "common-tags";
 })
 export class StopCommand extends Command {
   public override registerApplicationCommands(
-    registry: ApplicationCommandRegistry
+    registry: ApplicationCommandRegistry,
   ) {
     registry.registerChatInputCommand((command) =>
       command
@@ -22,13 +22,13 @@ export class StopCommand extends Command {
             .setName("server")
             .setDescription("The server to view information of")
             .setChoices(
-              Object.entries(config.servers).map(([key, value]) => ({
-                name: `${value} (${key})`,
-                value: key,
-              }))
+              config.servers.map((data) => ({
+                name: `${data.nickname} (${data.id})`,
+                value: data.id,
+              })),
             )
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     );
   }
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
@@ -40,45 +40,33 @@ export class StopCommand extends Command {
     const server = interaction.options.getString("server", true);
     await interaction.deferReply();
     const data = await api.getUsage(server);
-    if (data === 404) return interaction.editReply("Couldn't find the server!");
-    const embed = new EmbedBuilder().setDescription(
-      data.is_suspended
-        ? "**Suspended**"
-        : `
-      Status: ${data.current_state
+    if (data === null) {
+      return createEmbed("error")
+        .setDescription("Server not found!")
+        .reply(interaction);
+    }
+    const embed = createEmbed("info")
+      .setDescription(
+        `
+      Status: ${data.state
         .split(" ")
         .map((word) =>
           [...word]
             .map((x, i) => (i === 0 ? x.toUpperCase() : x.toLowerCase()))
-            .join("")
+            .join(""),
         )
-        .join(" ")}`
-    );
-    if (!data.is_suspended)
-      embed.addFields({
+        .join(" ")}`,
+      )
+      .addFields({
         name: "Resources",
         value: stripIndent`
-  RAM: ${formatBytes(data.resources.memory_bytes)}
-  CPU: ${data.resources.cpu_absolute}%
-  Disk: ${formatBytes(data.resources.disk_bytes)}
-  Network (Inbound): ${formatBytes(data.resources.network_rx_bytes)}
-  Network (Outbound): ${formatBytes(data.resources.network_tx_bytes)}`,
-      });
-    return interaction.editReply({
-      embeds: [embed],
-    });
+    **RAM**: ${data.ram} / ${data.ram_limit}
+    **CPU**: ${data.cpu}
+    **Disk**: ${data.disk}
+    **Network (Inbound)**: ${data.network_in}
+    **Network (Outbound)**: ${data.network_out}`,
+      })
+      .setColor("Aqua");
+    return embed.edit(interaction);
   }
-}
-function formatBytes(bytes: number): string {
-  if (bytes < 0) {
-    throw new Error("Byte value cannot be negative");
-  }
-
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  if (bytes === 0) return "0 Bytes";
-
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const value = bytes / Math.pow(1024, i);
-
-  return `${value.toFixed(2)} ${sizes[i]}`;
 }

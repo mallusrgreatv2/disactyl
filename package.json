@@ -21,16 +21,18 @@
     "ws": "^8.18.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.1",
+    "@eslint/js": "^9.22.0",
     "@sapphire/cli": "^1.9.3",
     "@sapphire/eslint-config": "^5.0.5",
     "@sapphire/ts-config": "^5.0.1",
     "@types/common-tags": "^1.8.4",
     "@types/node": "^22.13.10",
     "@types/ws": "^8.18.0",
-    "eslint": "^9.9.1",
+    "eslint": "^9.22.0",
+    "eslint-plugin-prettier": "^5.2.3",
     "globals": "^16.0.0",
-    "prettier": "^3.3.3",
+    "husky": "^9.1.7",
+    "prettier": "^3.5.3",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.26.1"
@@ -39,6 +41,9 @@
     "clean": "rimraf ./dist",
     "build": "tsup ./src",
     "start": "npm run build && node --no-warnings --enable-source-maps dist/index.js",
-    "config": "node scripts/create-config.js"
+    "config": "node scripts/create-config.js",
+    "prepare": "husky",
+    "lint": "eslint",
+    "format": "prettier --write src"
   }
 }

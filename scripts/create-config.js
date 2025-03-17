@@ -1,10 +1,11 @@
 import chalk from "chalk";
 import fs from "fs";
 import rl from "readline/promises";
+import { stdin, stdout } from "process";
 if (!fs.existsSync("src/config.ts")) {
   createConfig();
 } else {
-  const i = rl.createInterface(process.stdin, process.stdout);
+  const i = rl.createInterface(stdin, stdout);
   let str = (
     await i.question(
       chalk.red(
@@ -22,15 +23,17 @@ if (!fs.existsSync("src/config.ts")) {
   i.close();
 }
 function createConfig() {
-  fs.writeFileSync(
-    "src/config.ts",
-    fs
-      .readFileSync("src/config_default.ts")
-      .toString()
-      .split("\n")
-      .slice(5)
-      .join("\n")
-  );
+  const text = fs
+    .readFileSync("src/config_default.ts")
+    .toString()
+    .split("\n")
+    .slice(5)
+    .join("\n")
+    .replace(/export interface Config \{[\s\S]*?\n\}/, "")
+    .split("\n");
+  text.unshift(`import { Config } from "./config_default.js";`, "");
+  text.pop();
+  fs.writeFileSync("src/config.ts", text.join("\n"));
   console.log(
     `${chalk.green("Created config!")} Open ${chalk.yellow("src/config.ts")} and configure the options.\nThen you can start the bot using ${chalk.yellow("npm run start")}.`
   );

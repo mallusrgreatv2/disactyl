@@ -13,10 +13,10 @@ export class UserCommand extends Command {
   }
 
   public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction
+    interaction: Command.ChatInputCommandInteraction,
   ) {
     return interaction.reply(
-      `🏓 Pong! **${this.container.client.ws.ping.toFixed()}ms**`
+      `🏓 Pong! **${this.container.client.ws.ping.toFixed()}ms**`,
     );
   }
 }

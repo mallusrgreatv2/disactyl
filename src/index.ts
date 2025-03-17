@@ -1,5 +1,4 @@
 import { Pterodactyl } from "./lib/pterodactyl.js";
-export const api = new Pterodactyl();
 
 import { SapphireClient } from "@sapphire/framework";
 import { GatewayIntentBits } from "discord.js";
@@ -9,6 +8,7 @@ import { config } from "./config.js";
 const client = new SapphireClient({
   intents: [GatewayIntentBits.Guilds],
 });
+export const api = new Pterodactyl(client);
 const main = async () => {
   console.log(chalk.gray(`| ${chalk.blue("Discord")}: Logging in...`));
   try {
@@ -16,8 +16,8 @@ const main = async () => {
   } catch (error) {
     console.log(
       chalk.redBright(
-        `| ${chalk.blue("Discord")}: Error occured while logging in.`
-      )
+        `| ${chalk.blue("Discord")}: Error occured while logging in.`,
+      ),
     );
     console.error(error);
     await client.destroy();

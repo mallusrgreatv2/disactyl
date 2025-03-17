@@ -1,29 +1,26 @@
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, AxiosError } from "axios";
 import { config } from "../config.js";
 import chalk from "chalk";
-import { Collection } from "discord.js";
-export enum StatusCode {
-  SUCCESS,
-  NOT_FOUND,
-  RATE_LIMITED,
-}
+import WebSocket from "ws";
+import { createEmbed, formatBytes, getServerName } from "./utils.js";
+import { SapphireClient } from "@sapphire/framework";
+import { Colors, SendableChannels } from "discord.js";
+import stripAnsi from "strip-ansi";
+
 export class Pterodactyl {
-  public client: AxiosInstance;
+  public axiosClient: AxiosInstance;
   public url: string;
   public apiKey: string;
-  public servers: Server[] = [];
-  public webhookEnabledServers: {
-    serverId: string;
-    channelId: string;
-    token: string;
-    url: string;
-    serverStatusEnabled: boolean;
-    consoleRelayEnabled: boolean;
-  }[] = [];
-  public constructor(url?: string, apiKey?: string) {
+  public servers: PterodactylServer[] = [];
+
+  constructor(
+    public client: SapphireClient,
+    url?: string,
+    apiKey?: string,
+  ) {
     this.url = url || config.pterodactylSettings.url;
     this.apiKey = apiKey || config.pterodactylSettings.apiKey;
-    this.client = axios.create({
+    this.axiosClient = axios.create({
       baseURL: `${this.url}/api/client`,
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -31,192 +28,173 @@ export class Pterodactyl {
         Accept: "application/json",
       },
     });
-    this.init();
   }
+
   public async init() {
     console.log(
-      chalk.gray(`| ${chalk.red("Pterodactyl")}: Loading servers...`)
+      chalk.gray(`| ${chalk.red("Pterodactyl")}: Loading servers...`),
     );
-    const res = await this.client.get<ServersResponse>("/");
-    if (!res.status.toString().startsWith("2"))
-      throw new Error(`Server errored with status: ${res.statusText}`);
-    const servers = res.data.data.map((server) => server.attributes);
-    for (const configServer of [
-      ...Object.entries(config.servers),
-      ...Object.entries(config.serverStatus),
-      ...Object.entries(config.consoleRelay),
-    ]) {
-      if (!Object.keys(config.servers).includes(configServer[0])) {
-        chalk.redBright(
-          `| ${chalk.red("Pterodactyl")}: Server ${chalk.red(`${configServer[1]} (id: ${configServer[0]})`)} was not found in the servers config.`
-        );
-        continue;
-      }
-      if (this.servers.find((x) => x.identifier === configServer[0])) continue;
-      const server = servers.find(
-        (server) => server.identifier === configServer[0]
+
+    for (const server of config.servers) {
+      const wsData = await this.getWebsocketData(server.id);
+      const ws = new WebSocket(wsData.url, { origin: this.url });
+      let connected = false;
+      const consoleRelay = this.getSendableChannel(
+        server.consoleRelayChannelId,
       );
-      if (!server) {
-        console.log(
-          chalk.redBright(
-            `| ${chalk.red("Pterodactyl")}: Server ${chalk.red(`${configServer[1]} (id: ${configServer[0]})`)} was not found in the panel.`
-          )
-        );
-        continue;
-      }
-      console.log(
-        chalk.gray(
-          `| ${chalk.red("Pterodactyl")}: Server ${chalk.white(`${configServer[1]} (id: ${configServer[0]})`)} loaded successfully.`
-        )
+      const serverStatus = this.getSendableChannel(
+        server.serverStatusChannelId,
       );
-      this.servers.push(server);
+
+      ws.on("open", () =>
+        ws.send(JSON.stringify({ event: "auth", args: [wsData.token] })),
+      );
+      ws.on("message", async (rawMessage) => {
+        const data = JSON.parse(rawMessage.toString());
+        const srv = this.servers.find((x) => x.id === server.id);
+
+        switch (data.event) {
+          case "token expiring":
+          case "token expired": {
+            const wsData = await this.getWebsocketData(server.id);
+            ws.send(JSON.stringify({ event: "auth", args: [wsData.token] }));
+            break;
+          }
+          case "auth success":
+            if (!connected) {
+              ws.send(JSON.stringify({ event: "send stats", args: [null] }));
+              console.log(
+                chalk.gray(
+                  `| ${chalk.red("Pterodactyl")}: Connected to the server ${getServerName(server.id)}`,
+                ),
+              );
+            }
+
+            connected = true;
+            break;
+          case "console output":
+            if (consoleRelay)
+              consoleRelay.send(
+                `**${getServerName(server.id)}**: ${stripAnsi(data.args[0])}`,
+              );
+            break;
+          case "status":
+            if (!serverStatus || !srv) break;
+            srv.stats.state = data.args[0] as ServerStatus;
+            createEmbed("info")
+              .setDescription(
+                `Server **${getServerName(server.id)}** is now **${data.args[0]}**.`,
+              )
+              .setColor(this.statusColor(srv.stats.state))
+              .send(serverStatus);
+            break;
+          case "stats": {
+            const parsed = JSON.parse(data.args[0]);
+            if (!("network" in parsed)) return;
+
+            const existingServer = this.servers.find((x) => x.id === server.id);
+            const stats = {
+              state: parsed.state as ServerStatus,
+              network_in: formatBytes(parsed.network.rx_bytes),
+              network_out: formatBytes(parsed.network.tx_bytes),
+              cpu: `${parsed.cpu_absolute}%`,
+              ram: formatBytes(parsed.memory_bytes),
+              ram_limit: formatBytes(parsed.memory_limit_bytes),
+              disk: formatBytes(parsed.disk_bytes),
+            };
+
+            if (existingServer) {
+              existingServer.stats = stats;
+            } else {
+              this.servers.push({
+                ...server,
+                ws,
+                stats,
+              });
+            }
+            break;
+          }
+        }
+      });
     }
-    const webhookEnabled = new Collection([
-      ...Object.entries(config.serverStatus),
-      ...Object.entries(config.consoleRelay),
-    ]).filter((_, serverId) =>
-      this.servers.find((x) => x.identifier === serverId)
-    );
-    this.webhookEnabledServers = await Promise.all(
-      webhookEnabled.map(async (channelId, serverId) => {
-        const webhookLink = await this.client.get<{
-          data: {
-            token: string;
-            socket: string;
-          };
-        }>(`/servers/${serverId}/websocket`);
-        return {
-          serverId,
-          channelId,
-          token: webhookLink.data.data.token,
-          url: webhookLink.data.data.socket,
-          serverStatusEnabled: !!Object.entries(config.serverStatus).find(
-            ([sid]) => serverId === sid
-          ),
-          consoleRelayEnabled: !!Object.entries(config.consoleRelay).find(
-            ([sid]) => serverId === sid
-          ),
-        };
-      })
-    );
-    console.log(
-      chalk.whiteBright(
-        `| ${chalk.red("Pterodactyl")}: Loaded ${this.servers.length} pterodactyl servers`
-      )
-    );
   }
+
+  private getSendableChannel(channelId?: string): SendableChannels | null {
+    if (!channelId) return null;
+    const channel = this.client.channels.cache.get(channelId);
+    if (!channel?.isSendable())
+      throw new Error(`Channel ID ${channelId} is not a valid text channel.`);
+    return channel;
+  }
+
   public async changePower(
     serverId: string,
-    signal: "start" | "stop" | "restart" | "kill"
+    signal: "start" | "stop" | "restart" | "kill",
   ) {
-    if (!this.servers.find((server) => server.identifier === serverId)) {
-      return {
-        statusText: "Server not found",
-        status: 404,
-      };
-    }
-    const res = await this.client
-      .post(`/servers/${serverId}/power`, {
-        signal,
-      })
-      .catch((err) => err);
-    return { statusText: res.statusText, status: res.status };
+    const server = this.servers.find((s) => s.id === serverId);
+    if (!server) return null;
+    server.ws.send(JSON.stringify({ event: "set state", args: [signal] }));
+    return true;
   }
+
   public async sendCommand(serverId: string, command: string) {
-    if (!this.servers.find((server) => server.identifier === serverId))
-      return {
-        statusText: "Server not found",
-        status: 404,
-      };
-    const res = await this.client
-      .post(`/servers/${serverId}/command`, {
-        command,
-      })
-      .catch((err) => err);
-    return { statusText: res.statusText, status: res.status };
+    const server = this.servers.find((s) => s.id === serverId);
+    if (!server) return null;
+    server.ws.send(JSON.stringify({ event: "send command", args: [command] }));
+    return true;
   }
+
   public async getUsage(serverId: string) {
-    if (!this.servers.find((server) => server.identifier === serverId))
-      return 404;
-    const res = await this.client.get<ResourcesResult>(
-      `/servers/${serverId}/resources`
-    );
-    const data = res.data.attributes;
-    return data;
+    const server = this.servers.find((s) => s.id === serverId);
+    if (!server) return null;
+
+    return server ? server.stats : null;
   }
-}
-interface Server {
-  server_owner: boolean;
-  identifier: string;
-  uuid: string;
-  name: string;
-  node: string;
-  sftp_details: {
-    ip: string;
-    port: number;
-  };
-  description: string;
-  limits: {
-    memory: number;
-    swap: number;
-    disk: number;
-    io: number;
-    cpu: number;
-  };
-  feature_limits: {
-    databases: number;
-    allocations: number;
-    backups: number;
-  };
-  is_suspended: boolean;
-  is_installing: boolean;
-  relationships: {
-    allocations: {
-      object: string;
-      data: {
-        object: string;
-        attributes: {
-          id: number;
-          ip: string;
-          ip_alias?: any;
-          port: number;
-          notes?: any;
-          is_default: boolean;
-        };
-      }[];
-    };
-  };
-}
-interface ServersResponse {
-  object: string;
-  data: {
-    object: string;
-    attributes: Server;
-  }[];
-  meta: {
-    pagination: {
-      total: number;
-      count: number;
-      per_page: number;
-      current_page: number;
-      total_pages: number;
-      links: {};
-    };
-  };
-}
-export interface Resources {
-  current_state: string;
-  is_suspended: boolean;
-  resources: {
-    memory_bytes: number;
-    cpu_absolute: number;
-    disk_bytes: number;
-    network_rx_bytes: number;
-    network_tx_bytes: number;
-  };
+
+  private async getWebsocketData(serverId: string) {
+    try {
+      const { data } = await this.axiosClient.get(
+        `/servers/${serverId}/websocket`,
+      );
+      return { token: data.data.token, url: data.data.socket };
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        throw new Error(`Server ${serverId} was not found in the panel.`);
+      }
+      throw error;
+    }
+  }
+  private statusColor(status: ServerStatus) {
+    switch (status) {
+      case "offline":
+        return Colors.DarkRed;
+      case "stopping":
+        return Colors.Red;
+      case "online":
+        return Colors.Green;
+      case "starting":
+        return Colors.DarkAqua;
+    }
+  }
 }
 
-export interface ResourcesResult {
-  object: string;
-  attributes: Resources;
+interface ServerStats {
+  state: ServerStatus;
+  ram: string;
+  ram_limit: string;
+  disk: string;
+  cpu: string;
+  network_in: string;
+  network_out: string;
+}
+
+type ServerStatus = "offline" | "online" | "starting" | "stopping";
+
+export interface PterodactylServer {
+  id: string;
+  nickname?: string;
+  ws: WebSocket;
+  serverStatusChannelId?: string;
+  consoleRelayChannelId?: string;
+  stats: ServerStats;
 }
