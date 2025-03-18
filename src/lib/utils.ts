@@ -6,11 +6,11 @@ import {
   type MessageCommandSuccessPayload,
 } from "@sapphire/framework";
 import {
+  ButtonInteraction,
   CommandInteraction,
   EmbedBuilder,
   InteractionEditReplyOptions,
   InteractionReplyOptions,
-  InteractionUpdateOptions,
   Message,
   MessageComponentInteraction,
   MessageCreateOptions,
@@ -84,7 +84,9 @@ function getGuildInfo(guild: Guild | null) {
   if (guild === null) return "Direct Messages";
   return `${guild.name}[${cyan(guild.id)}]`;
 }
-export function checkPermission(interaction: ChatInputCommandInteraction) {
+export function checkPermission(
+  interaction: ChatInputCommandInteraction | ButtonInteraction,
+) {
   if (!interaction.inCachedGuild()) return;
   if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator))
     return true;
@@ -93,7 +95,14 @@ export function checkPermission(interaction: ChatInputCommandInteraction) {
     interaction.member.roles.cache.has(config.accessRoleId)
   )
     return true;
-  interaction.editReply(":x: You do not have permission to use this command.");
+  if (interaction.replied || interaction.deferred)
+    interaction.editReply({
+      content: ":x: You do not have permission to use this command.",
+    });
+  else
+    interaction.reply({
+      content: ":x: You do not have permission to use this command.",
+    });
   return false;
 }
 class EmbedBuilderX extends EmbedBuilder {
@@ -106,17 +115,11 @@ class EmbedBuilderX extends EmbedBuilder {
       embeds: [...(options?.embeds ?? []), this],
     });
   }
-  edit(interaction: CommandInteraction, options?: InteractionEditReplyOptions) {
-    return interaction.editReply({
-      ...options,
-      embeds: [...(options?.embeds ?? []), this],
-    });
-  }
-  update(
-    interaction: MessageComponentInteraction,
-    options?: InteractionUpdateOptions,
+  edit(
+    interaction: CommandInteraction | MessageComponentInteraction,
+    options?: InteractionEditReplyOptions,
   ) {
-    return interaction.update({
+    return interaction.editReply({
       ...options,
       embeds: [...(options?.embeds ?? []), this],
     });

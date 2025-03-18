@@ -40,7 +40,7 @@ export class KillCommand extends Command {
         .setDescription("The server could not be found!")
         .edit(interaction);
     return createEmbed("info")
-      .setDescription(`Successfully killed the server.`)
+      .setDescription(`Successfully sent the signal to kill the server.`)
       .setAuthor({
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,

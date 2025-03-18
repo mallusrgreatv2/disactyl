@@ -64,9 +64,12 @@ export class StopCommand extends Command {
     **CPU**: ${data.cpu}
     **Disk**: ${data.disk}
     **Network (Inbound)**: ${data.network_in}
-    **Network (Outbound)**: ${data.network_out}`,
+    **Network (Outbound)**: ${data.network_out}
+    
+    *Stats last updated:* <t:${Math.floor(data.lastUpdated / 1000)}:R>`,
       })
-      .setColor("Aqua");
+      .setColor("Aqua")
+      .setTimestamp(data.lastUpdated);
     return embed.edit(interaction);
   }
 }

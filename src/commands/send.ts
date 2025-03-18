@@ -45,7 +45,9 @@ export class RestartCommand extends Command {
     if (data === null)
       return interaction.editReply("The server could not be found!");
     return createEmbed("info")
-      .setDescription(`Successfully sent the command to the server.`)
+      .setDescription(
+        `Successfully sent the signal to send the command to the server.`,
+      )
       .setAuthor({
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,

@@ -40,7 +40,7 @@ export class StopCommand extends Command {
         .setDescription("The server could not be found!")
         .edit(interaction);
     return createEmbed("info")
-      .setDescription(`Successfully stopped the server.`)
+      .setDescription(`Successfully sent the signal to stop the server.`)
       .setAuthor({
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,

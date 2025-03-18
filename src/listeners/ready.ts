@@ -8,7 +8,7 @@ export class UserEvent extends Listener {
     await api.init();
     this.container.logger.info(
       "Discord",
-      `Bot started as user ${this.container.client.user!.tag}`,
+      `Bot logged in as user ${this.container.client.user!.tag}`,
     );
   }
 }

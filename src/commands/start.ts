@@ -40,7 +40,7 @@ export class StartCommand extends Command {
         .setDescription("The server could not be found!")
         .edit(interaction);
     return createEmbed("info")
-      .setDescription(`Successfully started the server.`)
+      .setDescription(`Successfully sent the signal to start the server.`)
       .setAuthor({
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,

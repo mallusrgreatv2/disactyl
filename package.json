@@ -41,12 +41,13 @@
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "tsup ./src",
-    "serve": "npx tsc && npm run build && node --no-warnings --enable-source-maps dist/index.js",
+    "serve": "npm run update && npx tsc && npm run build && node --no-warnings --enable-source-maps dist/index.js",
     "start": "cross-env NODE_ENV=production npm run serve",
     "dev": "cross-env NODE_ENV=development npm run serve",
     "config": "node scripts/create-config.js",
     "prepare": "husky",
     "lint": "eslint",
-    "format": "prettier --write src"
+    "format": "prettier --write src",
+    "update": "node scripts/updater.js"
   }
 }

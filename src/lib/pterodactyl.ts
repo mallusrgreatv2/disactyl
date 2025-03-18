@@ -13,6 +13,7 @@ export class Pterodactyl {
   public url: string;
   public apiKey: string;
   public servers: PterodactylServer[] = [];
+  public liveSessions: Map<string, LiveSessionFunction> = new Map();
 
   constructor(
     public client: SapphireClient,
@@ -48,6 +49,11 @@ export class Pterodactyl {
       ws.on("open", () =>
         ws.send(JSON.stringify({ event: "auth", args: [wsData.token] })),
       );
+      const logs = [] as string[];
+      const pushLog = (data: string) => {
+        if (logs.length >= 10) logs.shift();
+        logs.push(data);
+      };
       ws.on("message", async (rawMessage) => {
         const data = JSON.parse(rawMessage.toString());
         const srv = this.servers.find((x) => x.id === server.id);
@@ -82,6 +88,10 @@ export class Pterodactyl {
             connected = true;
             break;
           case "console output": {
+            pushLog(data.args[0]);
+            this.liveSessions.get(server.id)?.({
+              logs,
+            });
             if (consoleRelay) {
               logger.debug(
                 "Pterodactyl",
@@ -94,18 +104,20 @@ export class Pterodactyl {
             break;
           }
           case "status":
-            if (!serverStatus || !srv) break;
-            srv.stats.state = data.args[0] as ServerStatus;
-            createEmbed("info")
-              .setDescription(
-                `Server **${getServerName(server.id)}** is now **${data.args[0]}**.`,
-              )
-              .setColor(this.statusColor(srv.stats.state))
-              .send(serverStatus);
-            logger.debug(
-              "Pterodactyl",
-              `Server ${getServerName(server.id)} changed status to: ${data.args[0]}`,
-            );
+            {
+              if (!serverStatus || !srv) break;
+              srv.stats.state = data.args[0] as ServerStatus;
+              createEmbed("info")
+                .setDescription(
+                  `Server **${getServerName(server.id)}** is now **${data.args[0]}**.`,
+                )
+                .setColor(this.statusColor(srv.stats.state))
+                .send(serverStatus);
+              logger.debug(
+                "Pterodactyl",
+                `Server ${getServerName(server.id)} changed status to: ${data.args[0]}`,
+              );
+            }
             break;
           case "stats": {
             const parsed = JSON.parse(data.args[0]);
@@ -120,7 +132,12 @@ export class Pterodactyl {
               ram: formatBytes(parsed.memory_bytes),
               ram_limit: formatBytes(parsed.memory_limit_bytes),
               disk: formatBytes(parsed.disk_bytes),
-            };
+              lastUpdated: Date.now(),
+            } satisfies ServerStats;
+            this.liveSessions.get(server.id)?.({
+              logs,
+              stats,
+            });
             if (existingServer) {
               existingServer.stats = stats;
             } else {
@@ -166,7 +183,7 @@ export class Pterodactyl {
     return true;
   }
 
-  public async getUsage(serverId: string) {
+  public getUsage(serverId: string) {
     const server = this.servers.find((s) => s.id === serverId);
     if (!server) return null;
 
@@ -192,15 +209,18 @@ export class Pterodactyl {
         return Colors.DarkRed;
       case "stopping":
         return Colors.Red;
-      case "online":
+      case "running":
         return Colors.Green;
       case "starting":
         return Colors.DarkAqua;
     }
   }
 }
-
-interface ServerStats {
+export type LiveSessionFunction = (options: {
+  logs: string[];
+  stats?: ServerStats;
+}) => unknown;
+export interface ServerStats {
   state: ServerStatus;
   ram: string;
   ram_limit: string;
@@ -208,9 +228,10 @@ interface ServerStats {
   cpu: string;
   network_in: string;
   network_out: string;
+  lastUpdated: number;
 }
 
-type ServerStatus = "offline" | "online" | "starting" | "stopping";
+type ServerStatus = "offline" | "running" | "starting" | "stopping";
 
 export interface PterodactylServer {
   id: string;
