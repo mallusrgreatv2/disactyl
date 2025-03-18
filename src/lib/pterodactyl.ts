@@ -1,11 +1,12 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 import { config } from "../config.js";
-import chalk from "chalk";
 import WebSocket from "ws";
 import { createEmbed, formatBytes, getServerName } from "./utils.js";
 import { SapphireClient } from "@sapphire/framework";
 import { Colors, SendableChannels } from "discord.js";
 import stripAnsi from "strip-ansi";
+import { logger } from "../index.js";
+import { gray } from "colorette";
 
 export class Pterodactyl {
   public axiosClient: AxiosInstance;
@@ -16,7 +17,7 @@ export class Pterodactyl {
   constructor(
     public client: SapphireClient,
     url?: string,
-    apiKey?: string
+    apiKey?: string,
   ) {
     this.url = url || config.pterodactylSettings.url;
     this.apiKey = apiKey || config.pterodactylSettings.apiKey;
@@ -31,23 +32,21 @@ export class Pterodactyl {
   }
 
   public async init() {
-    console.log(
-      chalk.gray(`| ${chalk.red("Pterodactyl")}: Loading servers...`)
-    );
+    logger.info("Pterodactyl", gray(`Loading servers...`));
 
     for (const server of config.servers) {
       const wsData = await this.getWebsocketData(server.id);
       const ws = new WebSocket(wsData.url, { origin: this.url });
       let connected = false;
       const consoleRelay = this.getSendableChannel(
-        server.consoleRelayChannelId
+        server.consoleRelayChannelId,
       );
       const serverStatus = this.getSendableChannel(
-        server.serverStatusChannelId
+        server.serverStatusChannelId,
       );
 
       ws.on("open", () =>
-        ws.send(JSON.stringify({ event: "auth", args: [wsData.token] }))
+        ws.send(JSON.stringify({ event: "auth", args: [wsData.token] })),
       );
       ws.on("message", async (rawMessage) => {
         const data = JSON.parse(rawMessage.toString());
@@ -56,6 +55,10 @@ export class Pterodactyl {
         switch (data.event) {
           case "token expiring":
           case "token expired": {
+            logger.debug(
+              "Pterodactyl",
+              gray(`Reconnecting to server ${getServerName(server.id)}`),
+            );
             const wsData = await this.getWebsocketData(server.id);
             ws.send(JSON.stringify({ event: "auth", args: [wsData.token] }));
             break;
@@ -63,30 +66,46 @@ export class Pterodactyl {
           case "auth success":
             if (!connected) {
               ws.send(JSON.stringify({ event: "send stats", args: [null] }));
-              console.log(
-                chalk.gray(
-                  `| ${chalk.red("Pterodactyl")}: Connected to the server ${getServerName(server.id)}`
-                )
+              logger.info(
+                "Pterodactyl",
+                `Connected to the server ${getServerName(server.id)}`,
+              );
+            } else {
+              logger.info(
+                "Pterodactyl",
+                gray(
+                  `Successfully reconnected to the server ${getServerName(server.id)}.`,
+                ),
               );
             }
 
             connected = true;
             break;
-          case "console output":
-            if (consoleRelay)
-              consoleRelay.send(
-                `**${getServerName(server.id)}**: ${stripAnsi(data.args[0])}`
+          case "console output": {
+            if (consoleRelay) {
+              logger.debug(
+                "Pterodactyl",
+                `Received console output from server ${getServerName(server.id)}`,
               );
+              consoleRelay.send(
+                `**${getServerName(server.id)}**: ${stripAnsi(data.args[0])}`,
+              );
+            }
             break;
+          }
           case "status":
             if (!serverStatus || !srv) break;
             srv.stats.state = data.args[0] as ServerStatus;
             createEmbed("info")
               .setDescription(
-                `Server **${getServerName(server.id)}** is now **${data.args[0]}**.`
+                `Server **${getServerName(server.id)}** is now **${data.args[0]}**.`,
               )
               .setColor(this.statusColor(srv.stats.state))
               .send(serverStatus);
+            logger.debug(
+              "Pterodactyl",
+              `Server ${getServerName(server.id)} changed status to: ${data.args[0]}`,
+            );
             break;
           case "stats": {
             const parsed = JSON.parse(data.args[0]);
@@ -102,7 +121,6 @@ export class Pterodactyl {
               ram_limit: formatBytes(parsed.memory_limit_bytes),
               disk: formatBytes(parsed.disk_bytes),
             };
-
             if (existingServer) {
               existingServer.stats = stats;
             } else {
@@ -112,6 +130,10 @@ export class Pterodactyl {
                 stats,
               });
             }
+            logger.debug(
+              "Pterodactyl",
+              `Received stats for server ${getServerName(server.id)}`,
+            );
             break;
           }
         }
@@ -129,7 +151,7 @@ export class Pterodactyl {
 
   public async changePower(
     serverId: string,
-    signal: "start" | "stop" | "restart" | "kill"
+    signal: "start" | "stop" | "restart" | "kill",
   ) {
     const server = this.servers.find((s) => s.id === serverId);
     if (!server) return null;
@@ -154,7 +176,7 @@ export class Pterodactyl {
   private async getWebsocketData(serverId: string) {
     try {
       const { data } = await this.axiosClient.get(
-        `/servers/${serverId}/websocket`
+        `/servers/${serverId}/websocket`,
       );
       return { token: data.data.token, url: data.data.socket };
     } catch (error) {

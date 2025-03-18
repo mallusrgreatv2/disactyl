@@ -5,7 +5,6 @@ import {
   type ContextMenuCommandSuccessPayload,
   type MessageCommandSuccessPayload,
 } from "@sapphire/framework";
-import { cyan } from "colorette";
 import {
   CommandInteraction,
   EmbedBuilder,
@@ -26,6 +25,7 @@ import {
 } from "discord.js";
 import { config } from "../config.js";
 import { api } from "../index.js";
+import { cyan } from "colorette";
 
 export function logSuccessCommand(
   payload:
@@ -50,6 +50,7 @@ export function logSuccessCommand(
   }
 
   container.logger.debug(
+    "Shard",
     `${successLoggerData.shard} - ${successLoggerData.commandName} ${successLoggerData.author} ${successLoggerData.sentAt}`,
   );
 }

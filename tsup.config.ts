@@ -7,5 +7,11 @@ export default defineConfig({
   clean: true,
   format: "esm",
   silent: true,
-  sourcemap: "inline"
+  sourcemap: "inline",
+  esbuildOptions(options) {
+    options.loader = {
+      ...options.loader,
+      ".md": "text",
+    };
+  },
 });
