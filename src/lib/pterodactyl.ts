@@ -54,8 +54,13 @@ export class Pterodactyl {
         if (logs.length >= 10) logs.shift();
         logs.push(data);
       };
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       ws.on("message", async (rawMessage) => {
-        const data = JSON.parse(rawMessage.toString());
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+        const data = JSON.parse(rawMessage.toString()) as {
+          event: string;
+          args: string[];
+        };
         const srv = this.servers.find((x) => x.id === server.id);
 
         switch (data.event) {
@@ -97,7 +102,7 @@ export class Pterodactyl {
                 "Pterodactyl",
                 `Received console output from server ${getServerName(server.id)}`,
               );
-              consoleRelay.send(
+              void consoleRelay.send(
                 `**${getServerName(server.id)}**: ${stripAnsi(data.args[0])}`,
               );
             }
@@ -107,7 +112,7 @@ export class Pterodactyl {
             {
               if (!serverStatus || !srv) break;
               srv.stats.state = data.args[0] as ServerStatus;
-              createEmbed("info")
+              await createEmbed("info")
                 .setDescription(
                   `Server **${getServerName(server.id)}** is now **${data.args[0]}**.`,
                 )
@@ -120,7 +125,17 @@ export class Pterodactyl {
             }
             break;
           case "stats": {
-            const parsed = JSON.parse(data.args[0]);
+            const parsed = JSON.parse(data.args[0]) as {
+              state: string;
+              network: {
+                rx_bytes: number;
+                tx_bytes: number;
+              };
+              cpu_absolute: number;
+              memory_bytes: number;
+              memory_limit_bytes: number;
+              disk_bytes: number;
+            };
             if (!("network" in parsed)) return;
 
             const existingServer = this.servers.find((x) => x.id === server.id);
@@ -166,7 +181,7 @@ export class Pterodactyl {
     return channel;
   }
 
-  public async changePower(
+  public changePower(
     serverId: string,
     signal: "start" | "stop" | "restart" | "kill",
   ) {
@@ -176,7 +191,7 @@ export class Pterodactyl {
     return true;
   }
 
-  public async sendCommand(serverId: string, command: string) {
+  public sendCommand(serverId: string, command: string) {
     const server = this.servers.find((s) => s.id === serverId);
     if (!server) return null;
     server.ws.send(JSON.stringify({ event: "send command", args: [command] }));
@@ -192,9 +207,12 @@ export class Pterodactyl {
 
   private async getWebsocketData(serverId: string) {
     try {
-      const { data } = await this.axiosClient.get(
-        `/servers/${serverId}/websocket`,
-      );
+      const { data } = await this.axiosClient.get<{
+        data: {
+          token: string;
+          socket: string;
+        };
+      }>(`/servers/${serverId}/websocket`);
       return { token: data.data.token, url: data.data.socket };
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 404) {

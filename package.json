@@ -48,6 +48,6 @@
     "prepare": "husky",
     "lint": "eslint src",
     "format": "prettier --write src",
-    "update": "node scripts/updater.js"
+    "update": ""
   }
 }

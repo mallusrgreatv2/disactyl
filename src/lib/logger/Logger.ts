@@ -72,7 +72,7 @@ export class Logger extends BuiltinLogger {
     ...values: readonly unknown[]
   ): void {
     if (level < this.level) return;
-
+    if (level === LogLevel.Error) return console.log(actor, ...values);
     const method = this.levels.get(level) ?? "log";
     const formatter =
       this.formats.get(level) ?? this.formats.get(LogLevel.None)!;

@@ -34,7 +34,7 @@ export class KillCommand extends Command {
     if (!checkPermission(interaction)) return;
     const server = interaction.options.getString("server", true);
     await interaction.deferReply();
-    const status = await api.changePower(server, "kill");
+    const status = api.changePower(server, "kill");
     if (status === null)
       return createEmbed("error")
         .setDescription("The server could not be found!")

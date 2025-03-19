@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import {
   ActionRowBuilder,
   ButtonBuilder,
+  ButtonInteraction,
   ButtonStyle,
   ChatInputCommandInteraction,
   ComponentType,
@@ -55,7 +56,7 @@ export class KillCommand extends Command {
       const stats = data.stats || api.getUsage(server);
       if (!stats) {
         api.liveSessions.delete(server);
-        createEmbed("error")
+        void createEmbed("error")
           .setDescription("Couldn't obtain server stats")
           [
             interaction.replied || interaction.deferred ? "edit" : "reply"
@@ -104,6 +105,10 @@ export class KillCommand extends Command {
               .setLabel("Kill")
               .setStyle(ButtonStyle.Danger)
               .setCustomId(`power:kill:${server}`),
+            new ButtonBuilder()
+              .setLabel("Send Command")
+              .setStyle(ButtonStyle.Primary)
+              .setCustomId(`send-command:${server}`),
           ],
         }),
         new ActionRowBuilder<ButtonBuilder>().setComponents(
@@ -138,7 +143,8 @@ export class KillCommand extends Command {
           {
             components,
           },
-        );
+        )
+        .catch(() => stopLiveSession(interaction));
     }
     api.liveSessions.set(server, liveSessionFunction);
     (
@@ -152,44 +158,36 @@ export class KillCommand extends Command {
         time: 1000 * 60 * 5,
       })
       .then((i) => {
-        api.liveSessions.delete(server);
-        i.update({
-          components: components?.map((row) =>
-            row.setComponents(
-              row.components.map((x) =>
-                x.setDisabled(true).setStyle(ButtonStyle.Secondary),
-              ),
-            ),
-          ),
-        });
+        stopLiveSession(i);
       })
       .catch(() => {
-        api.liveSessions.delete(server);
-        interaction.editReply({
-          components: components?.map((row) =>
-            row.setComponents(
-              row.components.map((x) =>
-                x.setDisabled(true).setStyle(ButtonStyle.Secondary),
-              ),
-            ),
-          ),
-        });
+        stopLiveSession(interaction);
       });
     setTimeout(
       () => {
-        api.liveSessions.delete(server);
-        interaction.editReply({
-          components: components?.map((row) =>
-            row.setComponents(
-              row.components.map((x) =>
-                x.setDisabled(true).setStyle(ButtonStyle.Secondary),
-              ),
-            ),
-          ),
-        });
+        stopLiveSession(interaction);
       },
       1000 * 60 * 5,
     );
+    function stopLiveSession(
+      interaction: ChatInputCommandInteraction | ButtonInteraction,
+    ) {
+      api.liveSessions.delete(server);
+      const data = {
+        components: components?.map((row) =>
+          row.setComponents(
+            row.components.map((x) =>
+              x.setDisabled(true).setStyle(ButtonStyle.Secondary),
+            ),
+          ),
+        ),
+      };
+      void (
+        interaction.isButton()
+          ? interaction.update.bind(interaction)
+          : interaction.editReply.bind(interaction)
+      )(data);
+    }
     return;
   }
 }

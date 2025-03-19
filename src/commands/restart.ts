@@ -34,7 +34,7 @@ export class RestartCommand extends Command {
     if (!checkPermission(interaction)) return;
     const server = interaction.options.getString("server", true);
     await interaction.deferReply();
-    const status = await api.changePower(server, "restart");
+    const status = api.changePower(server, "restart");
     if (status === null)
       return createEmbed("error")
         .setDescription("The server could not be found!")

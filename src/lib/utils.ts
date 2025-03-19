@@ -6,7 +6,6 @@ import {
   type MessageCommandSuccessPayload,
 } from "@sapphire/framework";
 import {
-  ButtonInteraction,
   CommandInteraction,
   EmbedBuilder,
   InteractionEditReplyOptions,
@@ -16,6 +15,7 @@ import {
   MessageCreateOptions,
   MessageEditOptions,
   MessageReplyOptions,
+  ModalSubmitInteraction,
   PermissionFlagsBits,
   SendableChannels,
   type APIUser,
@@ -85,7 +85,10 @@ function getGuildInfo(guild: Guild | null) {
   return `${guild.name}[${cyan(guild.id)}]`;
 }
 export function checkPermission(
-  interaction: ChatInputCommandInteraction | ButtonInteraction,
+  interaction:
+    | ChatInputCommandInteraction
+    | MessageComponentInteraction
+    | ModalSubmitInteraction,
 ) {
   if (!interaction.inCachedGuild()) return;
   if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator))
@@ -96,18 +99,21 @@ export function checkPermission(
   )
     return true;
   if (interaction.replied || interaction.deferred)
-    interaction.editReply({
+    void interaction.editReply({
       content: ":x: You do not have permission to use this command.",
     });
   else
-    interaction.reply({
+    void interaction.reply({
       content: ":x: You do not have permission to use this command.",
     });
   return false;
 }
 class EmbedBuilderX extends EmbedBuilder {
   reply(
-    interaction: CommandInteraction | MessageComponentInteraction,
+    interaction:
+      | CommandInteraction
+      | MessageComponentInteraction
+      | ModalSubmitInteraction,
     options?: InteractionReplyOptions,
   ) {
     return interaction.reply({

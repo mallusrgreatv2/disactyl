@@ -3,7 +3,7 @@ import {
   InteractionHandler,
   InteractionHandlerTypes,
 } from "@sapphire/framework";
-import { ButtonInteraction } from "discord.js";
+import { ButtonInteraction, MessageFlags } from "discord.js";
 import { checkPermission, createEmbed, getServerName } from "../lib/utils.js";
 import { api } from "../index.js";
 import { config } from "../config.js";
@@ -23,8 +23,7 @@ export class PowerHandler extends InteractionHandler {
   override async run(interaction: ButtonInteraction, parsedData: string[]) {
     if (!checkPermission(interaction)) return;
     const server = parsedData[1];
-    await interaction.deferReply();
-    const status = await api.changePower(
+    const status = api.changePower(
       server,
       parsedData[0] as "start" | "stop" | "restart" | "kill",
     );
@@ -40,6 +39,8 @@ export class PowerHandler extends InteractionHandler {
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,
       })
-      .edit(interaction);
+      .reply(interaction, {
+        flags: [MessageFlags.Ephemeral],
+      });
   }
 }

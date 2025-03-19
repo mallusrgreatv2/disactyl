@@ -34,7 +34,7 @@ export class StartCommand extends Command {
     if (!checkPermission(interaction)) return;
     const server = interaction.options.getString("server", true);
     await interaction.deferReply();
-    const status = await api.changePower(server, "start");
+    const status = api.changePower(server, "start");
     if (status === null)
       return createEmbed("error")
         .setDescription("The server could not be found!")

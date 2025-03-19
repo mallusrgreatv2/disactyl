@@ -41,7 +41,7 @@ export class RestartCommand extends Command {
     const server = interaction.options.getString("server", true);
     const command = interaction.options.getString("command", true);
     await interaction.deferReply();
-    const data = await api.sendCommand(server, command);
+    const data = api.sendCommand(server, command);
     if (data === null)
       return interaction.editReply("The server could not be found!");
     return createEmbed("info")

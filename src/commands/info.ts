@@ -39,7 +39,7 @@ export class StopCommand extends Command {
       return;
     const server = interaction.options.getString("server", true);
     await interaction.deferReply();
-    const data = await api.getUsage(server);
+    const data = api.getUsage(server);
     if (data === null) {
       return createEmbed("error")
         .setDescription("Server not found!")
