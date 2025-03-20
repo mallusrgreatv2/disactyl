@@ -14,6 +14,7 @@ export default [
       "no-unexpected-multiline": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/require-await": "error",
+      "@typescript-eslint/no-unsafe-member-access": "off",
     },
     languageOptions: {
       parserOptions: {

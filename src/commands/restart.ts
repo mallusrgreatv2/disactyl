@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { ChatInputCommandInteraction } from "discord.js";
 import { api } from "../index.js";
 import { checkPermission, createEmbed, getServerName } from "../lib/utils.js";
+import { Assets } from "../lib/assets.js";
 
 @ApplyOptions<Command.Options>({
   description: "Restart a server",
@@ -39,11 +40,12 @@ export class RestartCommand extends Command {
       return createEmbed("error")
         .setDescription("The server could not be found!")
         .edit(interaction);
-    return createEmbed("info")
+    return createEmbed("success")
       .setDescription(`Successfully sent the signal to restart the server.`)
       .setAuthor({
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,
+        iconURL: Assets.Success,
       })
       .edit(interaction);
   }

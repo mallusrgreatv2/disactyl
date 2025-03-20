@@ -26,6 +26,7 @@ import {
 import { config } from "../config.js";
 import { api } from "../index.js";
 import { cyan } from "colorette";
+import { Assets } from "./assets.js";
 
 export function logSuccessCommand(
   payload:
@@ -149,20 +150,28 @@ class EmbedBuilderX extends EmbedBuilder {
     });
   }
 }
-export function createEmbed(preset: "error" | "info") {
+export function createEmbed(preset: "error" | "info" | "success") {
   switch (preset) {
     case "error":
       return new EmbedBuilderX()
-        .setAuthor({ name: "Error", iconURL: "" })
+        .setAuthor({ name: "Error", iconURL: Assets.Error })
         .setColor("DarkRed");
     case "info":
-      return new EmbedBuilderX().setColor("Aqua");
+      return new EmbedBuilderX().setColor("Aqua").setAuthor({
+        name: "Info",
+        iconURL: Assets.Info,
+      });
+    case "success":
+      return new EmbedBuilderX().setColor("#09ff0c").setAuthor({
+        name: "Success",
+        iconURL: Assets.Success,
+      });
   }
 }
 export function getServerName(serverId: string, hideServerId?: boolean) {
   const server =
     api.servers.find((x) => x.id === serverId) ||
-    config.servers.find((s) => s.id === serverId);
+    config.servers.find((s: { id: string }) => s.id === serverId);
   if (!server) return serverId;
   const name = server.nickname || serverId;
   return `${name}${hideServerId || name === serverId ? "" : ` (${serverId})`}`;

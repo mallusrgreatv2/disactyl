@@ -13,6 +13,7 @@ import { api } from "../index.js";
 import { checkPermission, createEmbed, getServerName } from "../lib/utils.js";
 import { ServerStats } from "../lib/pterodactyl.js";
 import { stripIndent } from "common-tags";
+import { Assets } from "../lib/assets.js";
 
 @ApplyOptions<Command.Options>({
   description: "Start a live session displaying stats and logs of a server",
@@ -137,6 +138,7 @@ export class KillCommand extends Command {
         .setAuthor({
           name: getServerName(server),
           url: `${config.pterodactylSettings.url}/server/${server}`,
+          iconURL: Assets.Info,
         })
         [interaction.replied || interaction.deferred ? "edit" : "reply"](
           interaction,

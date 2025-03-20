@@ -11,6 +11,7 @@ import {
 import { checkPermission, createEmbed, getServerName } from "../lib/utils.js";
 import { api } from "../index.js";
 import { config } from "../config.js";
+import { Assets } from "../lib/assets.js";
 
 @ApplyOptions<InteractionHandler.Options>({
   interactionHandlerType: InteractionHandlerTypes.ModalSubmit,
@@ -41,6 +42,7 @@ export class SendCommandHandler extends InteractionHandler {
       .setAuthor({
         name: getServerName(serverId),
         url: `${config.pterodactylSettings.url}/server/${serverId}`,
+        iconURL: Assets.Success,
       })
       .reply(interaction, {
         flags: [MessageFlags.Ephemeral],

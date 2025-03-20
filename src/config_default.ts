@@ -21,7 +21,7 @@ export const config = {
       // https://panel.pterodactyl.dev/server/a1b2c3d4
       // then the ID is a1b2c3d4
       id: "a1b2c3d4",
-      // (Optional) The nickname to use for your convenience.
+      // The nickname to use for your convenience.
       nickname: "Proxy Server",
       /**
        * (Optional) Server Status: Send messages when servers start or stop to this channel.

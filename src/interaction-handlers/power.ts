@@ -7,6 +7,7 @@ import { ButtonInteraction, MessageFlags } from "discord.js";
 import { checkPermission, createEmbed, getServerName } from "../lib/utils.js";
 import { api } from "../index.js";
 import { config } from "../config.js";
+import { Assets } from "../lib/assets.js";
 
 @ApplyOptions<InteractionHandler.Options>({
   interactionHandlerType: InteractionHandlerTypes.Button,
@@ -31,13 +32,14 @@ export class PowerHandler extends InteractionHandler {
       return createEmbed("error")
         .setDescription("The server could not be found!")
         .edit(interaction);
-    return createEmbed("info")
+    return createEmbed("success")
       .setDescription(
         `Successfully sent the signal to ${parsedData[0]} the server.`,
       )
       .setAuthor({
         name: getServerName(server),
         url: `${config.pterodactylSettings.url}/server/${server}`,
+        iconURL: Assets.Success,
       })
       .reply(interaction, {
         flags: [MessageFlags.Ephemeral],

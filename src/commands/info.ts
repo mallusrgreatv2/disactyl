@@ -3,8 +3,9 @@ import { ApplicationCommandRegistry, Command } from "@sapphire/framework";
 import { config } from "../config.js";
 import { ChatInputCommandInteraction } from "discord.js";
 import { api } from "../index.js";
-import { checkPermission, createEmbed } from "../lib/utils.js";
+import { checkPermission, createEmbed, getServerName } from "../lib/utils.js";
 import { stripIndent } from "common-tags";
+import { Assets } from "../lib/assets.js";
 
 @ApplyOptions<Command.Options>({
   description: "View information (resources and status) of a server",
@@ -46,6 +47,11 @@ export class StopCommand extends Command {
         .reply(interaction);
     }
     const embed = createEmbed("info")
+      .setAuthor({
+        name: getServerName(server),
+        iconURL: Assets.Info,
+        url: `${config.pterodactylSettings.url}/server/${server}`,
+      })
       .setDescription(
         `
       Status: ${data.state
@@ -68,7 +74,6 @@ export class StopCommand extends Command {
     
     *Stats last updated:* <t:${Math.floor(data.lastUpdated / 1000)}:R>`,
       })
-      .setColor("Aqua")
       .setTimestamp(data.lastUpdated);
     return embed.edit(interaction);
   }
