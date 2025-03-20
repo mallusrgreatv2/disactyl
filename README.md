@@ -10,3 +10,7 @@ This Discord bot integrates the Pterodactyl API so that you can start, stop, res
 - Run the script to create config: `npm run config`
 - Now the script has created a config for you to edit. Go to `src/config.ts` file and edit it to your liking.
 - After editing the config, run the bot again: `npm run start`
+
+# Screenshots
+
+![Control the server in real-time](https://github.com/mallusrgreatv2/disactyl/blob/assets/examples/live.gif?raw=true)
