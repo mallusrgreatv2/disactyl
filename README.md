@@ -1,8 +1,8 @@
-# Pterodactyl Bot For Discord
+# Disactyl: Pterodactyl Bot For Discord
 
 [Discord Support Server](https://discord.gg/HRaFffMjkq) • BuiltByBit (soon)
 
-This Discord bot integrates the Pterodactyl API so that you can start, stop, restart, and kill your servers within Discord itself. You can also have the bot relay console messages to a Discord channel, and send status changes (server started and stopped) to channels.`
+This Discord bot integrates the Pterodactyl API so that you can start, stop, restart, and kill your servers within Discord itself. You can also have the bot relay console messages to a Discord channel, and send status changes (server started and stopped) to channels.
 
 ## Setup
 
