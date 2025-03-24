@@ -5,6 +5,10 @@
   "author": "mallusrgreatv2",
   "license": "MIT",
   "type": "module",
+  "engineStrict": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@discordjs/collection": "^2.1.1",
     "@sapphire/decorators": "^6.1.0",
